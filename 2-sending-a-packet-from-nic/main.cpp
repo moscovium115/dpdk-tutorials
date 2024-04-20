@@ -35,6 +35,17 @@ void terminate(int signal)
     exit_indicator = 1;
 }
 
+void set_ipv4_hdr(rte_ipv4_hdr *const ipv4_hdr){
+    ipv4_hdr->version = 4;              // Setting IP version as IPv4
+    ipv4_hdr->ihl = 5;                  // Setting IP header length = 20 bytes = (5 * 4 Bytes)
+    ipv4_hdr->type_of_service = 0;      // Setting DSCP = 0; ECN = 0;
+    ipv4_hdr->total_length = rte_cpu_to_be_16(200);       // Setting total IPv4 packet length to 200 bytes. This includes the IPv4 header (20 bytes) as well.
+    ipv4_hdr->packet_id = 0;            // Setting identification = 0 as the packet is non-fragmented.
+    ipv4_hdr->fragment_offset = 0x0040; // Setting packet as non-fragmented and fragment offset = 0.
+    ipv4_hdr->time_to_live = 64;        // Setting Time to live = 64;
+    ipv4_hdr->next_proto_id = 17;       // Setting the next protocol as UDP (17).
+}
+
 int main(int argc, char **argv)
 {
     // Setting up signals to catch TERM and INT signal.
@@ -193,6 +204,8 @@ int main(int argc, char **argv)
         uint8_t *data = rte_pktmbuf_mtod(packet, uint8_t *);
 
         // Setting Ethernet header information (Source MAC, Destination MAC, Ethernet type).
+
+        
         rte_ether_hdr *const eth_hdr = reinterpret_cast<rte_ether_hdr *>(data);
         eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
@@ -204,14 +217,8 @@ int main(int argc, char **argv)
 
         // Setting IPv4 header information.
         rte_ipv4_hdr *const ipv4_hdr = reinterpret_cast<rte_ipv4_hdr *>(data + sizeof(rte_ether_hdr));
-        ipv4_hdr->version = 4;              // Setting IP version as IPv4
-        ipv4_hdr->ihl = 5;                  // Setting IP header length = 20 bytes = (5 * 4 Bytes)
-        ipv4_hdr->type_of_service = 0;      // Setting DSCP = 0; ECN = 0;
-        ipv4_hdr->total_length = rte_cpu_to_be_16(200);       // Setting total IPv4 packet length to 200 bytes. This includes the IPv4 header (20 bytes) as well.
-        ipv4_hdr->packet_id = 0;            // Setting identification = 0 as the packet is non-fragmented.
-        ipv4_hdr->fragment_offset = 0x0040; // Setting packet as non-fragmented and fragment offset = 0.
-        ipv4_hdr->time_to_live = 64;        // Setting Time to live = 64;
-        ipv4_hdr->next_proto_id = 17;       // Setting the next protocol as UDP (17).
+        set_ipv4_hdr(ipv4_hdr)
+
 
         const uint8_t src_ip_addr[4] = {1, 2, 3, 4};                
         memcpy(&ipv4_hdr->src_addr, src_ip_addr, sizeof(src_ip_addr));      // Setting source ip address = 1.2.3.4
