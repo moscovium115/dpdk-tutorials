@@ -56,7 +56,7 @@ void set_ipv4_hdr(rte_ipv4_hdr *const ipv4_hdr){
     ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);      // Calculating and setting IPv4 checksum in IPv4 header.
 }
 
-void send_packet(rte_mbuf * packet){
+void send_packet(rte_mbuf *packet, uint16_t port_ids){
     const uint16_t tx_packets = rte_eth_tx_burst(port_ids[0], 0, &packet, 1);
     if (tx_packets == 0) {
         std::cout << "Unable to transmit the packet. " << std::endl;
@@ -77,17 +77,6 @@ int main(int argc, char **argv)
 
     std::cout << "Starting DPDK program ... " << std::endl;
 
-    // Initializing the DPDK EAL (Environment Abstraction Layer). This is the first step of a DPDK program before we 
-    // call any further DPDK API.
-    // The arguments passed to this programs are passed to rte_eal_init() DPDK API. A user must pass DPDK EAL arguments
-    // before the application arguments. The DPDK EAL arguments and application arguments must be separated by '--'.
-    // For example: ./<dpdk_application> --lcores=0 -n 4 -- -s 1 -t 2. `--` will tell the rte_eal_init() that all the DPDK
-    // EAL arguments are present before this.  
-    // In the above example the DPDK EAL arguments are --lcores and -n. The user arguments are -s and -t. 
-    // DPDK EAL argument `--lcores=0` means that this DPDK application will use core 0 to run the main function (main thread). 
-    // A DPDK application sets the affinity of execution threads to specific logical cores to achieve performance.
-    // DPDK EAL argument `-n 4` means that this DPDK application 4 memory channels. 
-    // The details are DPDK EAL arguments is present at: https://doc.dpdk.org/guides/linux_gsg/linux_eal_parameters.html
     int32_t return_val = rte_eal_init(argc, argv);
     if (return_val < 0) 
     {
@@ -95,11 +84,6 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    // rte_eal_init() DPDK API will return the number of DPDK EAL arguments processed. So we will subtract the number of DPDK EAL
-    // arguments from the total arguments and point argv to the first user argument.
-    // For example: ./<dpdk_application> --lcores=0 -n 4 -- -s 1 -t 2
-    // rte_eal_init() will return 4. The total arguments passed to this program is 9. So after subtracting the actual user arguments 
-    // is (9 - 4 = 5). Setting `argv` to point to the start of user argument which is `--`
     argc -= return_val;
     argv += return_val;
 
@@ -259,7 +243,7 @@ int main(int argc, char **argv)
 
         // Now our packet is finally prepared. We will now send it using the DPDK API.
         // The DPDK API `rte_eth_tx_burst` will automatically release the memory buffer after tranmission is successful.
-        send_packet();
+        send_packet(packet,port_ids);
         using namespace std::literals;
         std::this_thread::sleep_for(200ms);
     }
