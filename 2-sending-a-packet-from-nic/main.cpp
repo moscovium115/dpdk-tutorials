@@ -111,13 +111,8 @@ int main(int argc, char **argv)
 
     std::cout << "Total ports detected: " << total_port_count << std::endl;
 
-    // Creating memory pool which contains the memory buffers. A memory buffer is the buffer where DPDK driver will write an 
-    // incoming packet. Below memory pool has name "mempool_1" and has 1023 available memory buffer. A single memory buffer 
-    // has a size of RTE_MBUF_DEFAULT_BUF_SIZE (2048Bytes + 128Bytes).
     rte_mempool *memory_pool = rte_pktmbuf_pool_create("mempool_1", 1023, 512, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 
-    // Configuring the port (ethernet interface). An ethernet interface can have multiple receive queues and transmit queues. 
-    // Currently we are setting up one transmit queue and no receive queue as we are not receiving packets in this tutorial.
     const uint16_t rx_queues = 0;
     const uint16_t tx_queues = 1;
 
@@ -131,28 +126,17 @@ int main(int argc, char **argv)
     };
 
     // Configure the port (ethernet interface).
-    if ((return_val = rte_eth_dev_configure(port_ids[0], rx_queues, tx_queues, &portConf)) != 0) {
-        std::cerr << "Unable to configure port. port Id: " << port_ids[0] << " Return code: "  << return_val << std::endl;
-        rte_eal_cleanup();
-        exit(1);
-    }
+     rte_eth_dev_configure(port_ids[0], rx_queues, tx_queues, &portConf);
+
 
     const int16_t portSocketId = rte_eth_dev_socket_id(port_ids[0]);
     const int16_t coreSocketId = rte_socket_id();
 
     // Configure the Rx queue(s) of the port.
-    for (uint16_t i = 0; i < rx_queues; i++) {
-        return_val = rte_eth_rx_queue_setup(port_ids[0], i, 256, ((portSocketId >= 0) ? portSocketId : coreSocketId), nullptr, memory_pool);
+ 
+    rte_eth_rx_queue_setup(port_ids[0], i, 256, ((portSocketId >= 0) ? portSocketId : coreSocketId), nullptr, memory_pool);
         
-        if (return_val < 0) {
-            std::cerr << "Unable to setup RX queue " << i << " Port Id: " << port_ids[0] << "Return code: " << return_val << std::endl;
-            rte_eal_cleanup();
-            exit(1);
-        }
 
-        std::cout << "Port Id: " << port_ids[0] << " Rx Queue: " << i << " setup successful. Socket id: "   
-                  << ((portSocketId >= 0) ? portSocketId : coreSocketId) << std::endl;
-    }
 
     // Configure the Tx queue(s) of the port.
     for (uint16_t i = 0; i < tx_queues; i++) {
