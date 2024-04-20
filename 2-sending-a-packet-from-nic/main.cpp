@@ -66,6 +66,14 @@ void send_packet(rte_mbuf *packet, uint16_t port_ids){
         std::cout << "Packet transmitted successfully ... (" << transmitted_packet_count << ")" << std::endl;
     }
 }
+
+void set_udp_hdr(rte_udp_hdr *const udp_hdr){
+    udp_hdr->dst_port = rte_cpu_to_be_16(5000);     // Setting destination port = 5000;
+    udp_hdr->src_port = rte_cpu_to_be_16(10000);    // Setting source port = 10000;
+    udp_hdr->dgram_len = rte_cpu_to_be_16(180);     // Setting datagram length = 180;
+    udp_hdr->dgram_cksum = 0;                       // Setting checksum = 0;
+}
+
 int main(int argc, char **argv)
 {
     // Setting up signals to catch TERM and INT signal.
@@ -150,7 +158,6 @@ int main(int argc, char **argv)
     // Now we go into a loop to continously transmit the packets on the port (ethernet interface).
     while (!exit_indicator) {
 
-        // Get a memory buffer from our memory pool. On this memory buffer we will write our packet data.
         rte_mbuf *packet = nullptr;
         if (rte_mempool_get(memory_pool, reinterpret_cast<void **>(&packet)) != 0) {
             std::cout << "Error: Unable to get memory buffer from memory pool. " << std::endl;
@@ -159,15 +166,8 @@ int main(int argc, char **argv)
             continue;
         }
 
-        // We have successfully got the memory buffer. Now we will write the packet data. A memory buffer in DPDK is divided 
-        // into parts i.e. Head room memory area, main memory area and tail room memory area. The details are available at:
-        // https://doc.dpdk.org/guides/prog_guide/mbuf_lib.html
-        // We will get a pointer to the main memory area of our memory buffer and write packet info.
         uint8_t *data = rte_pktmbuf_mtod(packet, uint8_t *);
 
-        // Setting Ethernet header information (Source MAC, Destination MAC, Ethernet type).
-
-        
         rte_ether_hdr *const eth_hdr = reinterpret_cast<rte_ether_hdr *>(data);
         eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
@@ -181,13 +181,9 @@ int main(int argc, char **argv)
         rte_ipv4_hdr *const ipv4_hdr = reinterpret_cast<rte_ipv4_hdr *>(data + sizeof(rte_ether_hdr));
         set_ipv4_hdr(ipv4_hdr);
 
-
         // Setting UDP header information.
         rte_udp_hdr *const udp_hdr = reinterpret_cast<rte_udp_hdr *>(data + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
-        udp_hdr->dst_port = rte_cpu_to_be_16(5000);     // Setting destination port = 5000;
-        udp_hdr->src_port = rte_cpu_to_be_16(10000);    // Setting source port = 10000;
-        udp_hdr->dgram_len = rte_cpu_to_be_16(180);     // Setting datagram length = 180;
-        udp_hdr->dgram_cksum = 0;                       // Setting checksum = 0;
+        set_udp_hdr(udp_hdr);
 
         // Setting data in the UDP payload
         uint8_t *payload = data + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr) + sizeof(rte_udp_hdr);
