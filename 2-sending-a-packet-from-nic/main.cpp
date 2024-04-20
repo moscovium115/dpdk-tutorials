@@ -135,37 +135,11 @@ int main(int argc, char **argv)
     // Configure the Rx queue(s) of the port.
  
     rte_eth_rx_queue_setup(port_ids[0], i, 256, ((portSocketId >= 0) ? portSocketId : coreSocketId), nullptr, memory_pool);
+    rte_eth_tx_queue_setup(port_ids[0], i, 256, ((portSocketId >= 0) ? portSocketId : coreSocketId), nullptr);
         
-
-
-    // Configure the Tx queue(s) of the port.
-    for (uint16_t i = 0; i < tx_queues; i++) {
-        return_val = rte_eth_tx_queue_setup(port_ids[0], i, 256, ((portSocketId >= 0) ? portSocketId : coreSocketId), nullptr);
-        
-        if (return_val < 0) {
-            std::cerr << "Unable to setup TX queue " << i << " Port Id: " << port_ids[0] << "Return code: " << return_val << std::endl;
-            rte_eal_cleanup();
-            exit(1);
-        }
-
-        std::cout << "Port Id: " << port_ids[0] << " Tx Queue: " << i << " setup successful. Socket id: "   
-                  << ((portSocketId >= 0) ? portSocketId : coreSocketId) << std::endl;
-    }
-
-    // Enable promiscuous mode on the port. Not all the DPDK drivers provide the functionality to enable promiscuous mode. So we are going to 
-    // ignore the result if the API fails.
-    return_val = rte_eth_promiscuous_enable(port_ids[0]);
-    if (return_val < 0) {
-        std::cout << "Warning: Unable to set the promiscuous mode for port Id: " << port_ids[0] << " Return code: " << return_val << " Ignoring ... " << std::endl;
-    }
-
     // All the configuration is done. Finally starting the port (ethernet interface) so that we can start transmitting the packets.
-    return_val = rte_eth_dev_start(port_ids[0]);
-    if (return_val < 0) {
-        std::cout << "Unable to start port Id: " << port_ids[0] << " Return code: " << return_val << std::endl;
-        rte_eal_cleanup();
-        exit(1);
-    }
+    rte_eth_dev_start(port_ids[0]);
+
 
     std::cout << "Port configuration successful. Port Id: " << port_ids[0] << std::endl;
 
