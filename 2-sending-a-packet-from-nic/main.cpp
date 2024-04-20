@@ -36,6 +36,7 @@ void terminate(int signal)
 }
 
 void set_ipv4_hdr(rte_ipv4_hdr *const ipv4_hdr){
+
     ipv4_hdr->version = 4;              // Setting IP version as IPv4
     ipv4_hdr->ihl = 5;                  // Setting IP header length = 20 bytes = (5 * 4 Bytes)
     ipv4_hdr->type_of_service = 0;      // Setting DSCP = 0; ECN = 0;
@@ -44,8 +45,27 @@ void set_ipv4_hdr(rte_ipv4_hdr *const ipv4_hdr){
     ipv4_hdr->fragment_offset = 0x0040; // Setting packet as non-fragmented and fragment offset = 0.
     ipv4_hdr->time_to_live = 64;        // Setting Time to live = 64;
     ipv4_hdr->next_proto_id = 17;       // Setting the next protocol as UDP (17).
+
+    const uint8_t src_ip_addr[4] = {1, 2, 3, 4};                
+    memcpy(&ipv4_hdr->src_addr, src_ip_addr, sizeof(src_ip_addr));      // Setting source ip address = 1.2.3.4
+
+    const uint8_t dest_ip_addr[4] = {4, 3, 2, 1};
+    memcpy(&ipv4_hdr->dst_addr, dest_ip_addr, sizeof(dest_ip_addr));    // Setting destination ip address = 4.3.2.1
+
+    ipv4_hdr->hdr_checksum = 0;
+    ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);      // Calculating and setting IPv4 checksum in IPv4 header.
 }
 
+void send_packet(rte_mbuf * packet){
+    const uint16_t tx_packets = rte_eth_tx_burst(port_ids[0], 0, &packet, 1);
+    if (tx_packets == 0) {
+        std::cout << "Unable to transmit the packet. " << std::endl;
+        rte_pktmbuf_free(packet);   // As the packet is not transmitted, we need to free the memory buffer by our self.
+    } else {
+        transmitted_packet_count += tx_packets;
+        std::cout << "Packet transmitted successfully ... (" << transmitted_packet_count << ")" << std::endl;
+    }
+}
 int main(int argc, char **argv)
 {
     // Setting up signals to catch TERM and INT signal.
@@ -217,17 +237,8 @@ int main(int argc, char **argv)
 
         // Setting IPv4 header information.
         rte_ipv4_hdr *const ipv4_hdr = reinterpret_cast<rte_ipv4_hdr *>(data + sizeof(rte_ether_hdr));
-        set_ipv4_hdr(ipv4_hdr)
+        set_ipv4_hdr(ipv4_hdr);
 
-
-        const uint8_t src_ip_addr[4] = {1, 2, 3, 4};                
-        memcpy(&ipv4_hdr->src_addr, src_ip_addr, sizeof(src_ip_addr));      // Setting source ip address = 1.2.3.4
-
-        const uint8_t dest_ip_addr[4] = {4, 3, 2, 1};
-        memcpy(&ipv4_hdr->dst_addr, dest_ip_addr, sizeof(dest_ip_addr));    // Setting destination ip address = 4.3.2.1
-
-        ipv4_hdr->hdr_checksum = 0;
-        ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);      // Calculating and setting IPv4 checksum in IPv4 header.
 
         // Setting UDP header information.
         rte_udp_hdr *const udp_hdr = reinterpret_cast<rte_udp_hdr *>(data + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
@@ -248,15 +259,7 @@ int main(int argc, char **argv)
 
         // Now our packet is finally prepared. We will now send it using the DPDK API.
         // The DPDK API `rte_eth_tx_burst` will automatically release the memory buffer after tranmission is successful.
-        const uint16_t tx_packets = rte_eth_tx_burst(port_ids[0], 0, &packet, 1);
-        if (tx_packets == 0) {
-            std::cout << "Unable to transmit the packet. " << std::endl;
-            rte_pktmbuf_free(packet);   // As the packet is not transmitted, we need to free the memory buffer by our self.
-        } else {
-            transmitted_packet_count += tx_packets;
-            std::cout << "Packet transmitted successfully ... (" << transmitted_packet_count << ")" << std::endl;
-        }
-
+        send_packet();
         using namespace std::literals;
         std::this_thread::sleep_for(200ms);
     }
